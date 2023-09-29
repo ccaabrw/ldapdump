@@ -20,7 +20,7 @@ else
     captime=21600
 fi
 
-# Capture LDAP request packets
+# Capture incoming TCP session request packets
 (tcpdump -w $dumpfile dst host `hostname` and "tcp[tcpflags] == tcp-syn" > /dev/null 2>&1) & \
 pid=$!
 
