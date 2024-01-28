@@ -5,6 +5,8 @@
 #						Bri Jun 2016
 #
 # Sort by TLD - Jun 2017
+#
+# Use absolute path for tcpdump as PATH in cron jobs is just /bin:/usr/bin
 
 recip="b.watts@ucl.ac.uk"
 dumpfile="/tmp/ldapdump.`date +%F`.tcp"
@@ -21,14 +23,14 @@ else
 fi
 
 # Capture incoming TCP session request packets
-(tcpdump -w $dumpfile dst host `hostname` and "tcp[tcpflags] == tcp-syn" > /dev/null 2>&1) & \
+(/usr/sbin/tcpdump -w $dumpfile dst host `hostname` and "tcp[tcpflags] == tcp-syn" > /dev/null 2>&1) & \
 pid=$!
 
 # Only run for specified amount of time
 sleep $captime && kill $pid
 
 # Pull client names from dump file and mail the results
-tcpdump -r $dumpfile | \
+/usr/sbin/tcpdump -r $dumpfile | \
 awk '{print $5$3}' | \
 sed 's/\.[^\.]*$//' | perl -ple'$_=join".",reverse split/\./' | \
 sort -n | \
