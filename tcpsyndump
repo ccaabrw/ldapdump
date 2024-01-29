@@ -1,0 +1,43 @@
+#/bin/bash
+
+# Capture outgoing traffic for a period of time and then analyse the results
+#
+# Adapted from ldapdump script					Jan 2024 Bri
+#
+# Needs works to sort out the port numbers and sorting ...
+
+recip="b.watts@ucl.ac.uk"
+dumpfile="/tmp/tcpsyndump.`date +%F`.tcp"
+
+# Reverse hostname [except alias doesn't work for some reason - subshell?]
+alias revname='perl -ple'"'"'$_=join".",reverse split/\./'"'"
+
+# May specify capture timeout as argument
+if [ $# -eq 1 ]; then
+    captime=$1
+else
+    # Six hours
+    captime=21600
+fi
+
+# Capture incoming TCP session request packets
+(/usr/sbin/tcpdump -w $dumpfile src host `hostname` and "tcp[tcpflags] == tcp-syn" > /dev/null 2>&1) & \
+pid=$!
+
+# Only run for specified amount of time
+sleep $captime && kill $pid
+
+# Pull client names from dump file and mail the results
+/usr/sbin/tcpdump -r $dumpfile | \
+awk '{print $3$5}' | \
+sed 's/\.[^\.]*$//' | perl -ple'$_=join".",reverse split/\./' | \
+sort -n | \
+perl -ple'$_=join".",reverse split/\./' | \
+uniq -c | \
+awk '{print $2"\t"$1}' | \
+sed 's/:/\t/' | \
+mail -s "LDAP clients - `hostname`" $recip
+
+# Remove old dump files
+find /tmp -name 'tcpsyndump.*.tcp' -mtime +2 -exec rm {} \;
+
